@@ -176,7 +176,7 @@ module FabricStore =
         }
 
     // Enumeration
-    let enumerate tx (d:IReliableDictionary<Guid,'T>) = 
+    let enumerate tx (d:IReliableDictionary<'TKey,'T>) = 
 //        let result = 
 //            seq {
 //                let ct = new CancellationToken()
@@ -411,7 +411,7 @@ module FabricStore =
                 match sv with
                 | Empty -> return AsyncSeq.empty
                 | Dictionary d ->
-                    do! d.AddOrUpdateAsync(tx, key, value, Func<Guid,_,_>(fun _ _ -> value)) |> Async.AwaitTask
+                    do! d.AddOrUpdateAsync(tx, key, value, Func<_,_,_>(fun _ _ -> value)) |> Async.AwaitTask
                     return AsyncSeq.empty
                 | Values v ->
                     return AsyncSeq.empty
@@ -468,7 +468,7 @@ module FabricStore =
                 | Empty -> return AsyncSeq.empty
                 | Dictionary d -> return AsyncSeq.empty // Don't create a dictionary version, that would just duplicate items
                 | Values values ->
-                    let! (dictionary:IReliableDictionary<Guid,_>) = sm.GetOrAddAsync(dictionaryName) |> Async.AwaitTask
+                    let! (dictionary:IReliableDictionary<_,_>) = sm.GetOrAddAsync(dictionaryName) |> Async.AwaitTask
                     do!
                         values
                         |> AsyncSeq.iterAsync (fun v ->
@@ -489,7 +489,7 @@ module FabricStore =
                 | Empty -> return AsyncSeq.empty
                 | Dictionary d -> return AsyncSeq.empty // Don't create a dictionary version, that would just duplicate items
                 | Values values ->
-                    let! (dictionary:IReliableDictionary<Guid,_>) = sm.GetOrAddAsync(dictionaryName) |> Async.AwaitTask
+                    let! (dictionary:IReliableDictionary<_,_>) = sm.GetOrAddAsync(dictionaryName) |> Async.AwaitTask
                     do!
                         values
                         |> AsyncSeq.iterAsync (fun (key, value) ->
@@ -511,7 +511,7 @@ module FabricStore =
                 | Empty -> return AsyncSeq.empty
                 | Dictionary d -> return AsyncSeq.empty // Don't create a dictionary version, that would just duplicate items
                 | Values values ->
-                    let! (dictionary:IReliableDictionary<Guid,_>) = sm.GetOrAddAsync(dictionaryName) |> Async.AwaitTask
+                    let! (dictionary:IReliableDictionary<_,_>) = sm.GetOrAddAsync(dictionaryName) |> Async.AwaitTask
                     do!
                         values
                         |> AsyncSeq.iterAsync (fun v ->
