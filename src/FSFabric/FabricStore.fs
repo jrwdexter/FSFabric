@@ -224,7 +224,7 @@ module FabricStore =
             match vs with
             | EmptyStore _ -> AsyncSeq.empty
             | DictionaryStore _ -> AsyncSeq.empty
-            | ResultStore (sm,v) -> v
+            | ResultStore (_,v) -> v
         )
 
     // Applicative functor ('map')
@@ -289,7 +289,6 @@ module FabricStore =
         )
 
     let private lift2AsyncSeq f store1 store2 =
-        let sm = stateManager store1
         doAsyncSeq' (f AsyncSeq.empty) f store1
         |> fun f' -> doAsyncSeq' (f' AsyncSeq.empty) f' store2
         |> result (store1 |> stateManager)
@@ -370,7 +369,7 @@ module FabricStore =
     let toArrayAsync store = store |> (doAsyncSeqAsync Array.empty <| AsyncSeq.toArrayAsync)
     let toBlockingSeq store = store |> (doAsyncSeq Seq.empty <| AsyncSeq.toBlockingSeq)
     let toList store = store |> (doAsyncSeq List.empty <| AsyncSeq.toList)
-    let toListAsync predicate = doAsyncSeqAsync List.empty <| AsyncSeq.toListAsync
+    let toListAsync store = store |> (doAsyncSeqAsync List.empty <| AsyncSeq.toListAsync)
     let toSeq store = store |> (doAsyncSeq <| AsyncSeq.toBlockingSeq)
     let tryFind predicate = doAsyncSeqAsync None <| AsyncSeq.tryFind predicate
     let tryFirst store = store |> (doAsyncSeqAsync None <| AsyncSeq.tryFirst)
@@ -413,7 +412,7 @@ module FabricStore =
                 | Dictionary d ->
                     do! d.AddOrUpdateAsync(tx, key, value, Func<_,_,_>(fun _ _ -> value)) |> Async.AwaitTask
                     return AsyncSeq.empty
-                | Values v ->
+                | Values _ ->
                     return AsyncSeq.empty
             }
         )
@@ -427,7 +426,7 @@ module FabricStore =
                 | Dictionary d ->
                     do! d.AddAsync(tx, key, value) |> Async.AwaitTask
                     return AsyncSeq.empty
-                | Values v ->
+                | Values _ ->
                     return AsyncSeq.empty
             }
         )
@@ -439,7 +438,7 @@ module FabricStore =
             match vs with
             | EmptyStore sm ->
                 ResultStore(sm, AsyncSeq.singleton (key,item))
-            | DictionaryStore (sm,d) ->
+            | DictionaryStore (sm,_) ->
                 ResultStore(sm, AsyncSeq.singleton (key,item))
             | ResultStore (sm,v) ->
                 let sequence = (AsyncSeq.singleton (key,item)) |> AsyncSeq.append v
@@ -451,7 +450,7 @@ module FabricStore =
             match vs with
             | EmptyStore sm ->
                 ResultStore(sm, values)
-            | DictionaryStore (sm,d) ->
+            | DictionaryStore (sm,_) ->
                 ResultStore(sm, values)
             | ResultStore (sm,v) ->
                 let sequence = AsyncSeq.append v values
@@ -466,7 +465,7 @@ module FabricStore =
             async {
                 match storeValues with
                 | Empty -> return AsyncSeq.empty
-                | Dictionary d -> return AsyncSeq.empty // Don't create a dictionary version, that would just duplicate items
+                | Dictionary _ -> return AsyncSeq.empty // Don't create a dictionary version, that would just duplicate items
                 | Values values ->
                     let! (dictionary:IReliableDictionary<_,_>) = sm.GetOrAddAsync(dictionaryName) |> Async.AwaitTask
                     do!
@@ -487,7 +486,7 @@ module FabricStore =
             async {
                 match storeValues with
                 | Empty -> return AsyncSeq.empty
-                | Dictionary d -> return AsyncSeq.empty // Don't create a dictionary version, that would just duplicate items
+                | Dictionary _ -> return AsyncSeq.empty // Don't create a dictionary version, that would just duplicate items
                 | Values values ->
                     let! (dictionary:IReliableDictionary<_,_>) = sm.GetOrAddAsync(dictionaryName) |> Async.AwaitTask
                     do!
@@ -509,7 +508,7 @@ module FabricStore =
             async {
                 match storeValues with
                 | Empty -> return AsyncSeq.empty
-                | Dictionary d -> return AsyncSeq.empty // Don't create a dictionary version, that would just duplicate items
+                | Dictionary _ -> return AsyncSeq.empty // Don't create a dictionary version, that would just duplicate items
                 | Values values ->
                     let! (dictionary:IReliableDictionary<_,_>) = sm.GetOrAddAsync(dictionaryName) |> Async.AwaitTask
                     do!
@@ -527,7 +526,7 @@ module FabricStore =
     let commit store =
         async {
             match store with
-            | OutsideOpenedStore (tx,vs) -> 
+            | OutsideOpenedStore (tx,_) -> 
                 do! tx.CommitAsync() |> Async.AwaitTask
                 return store
             | OpenedStore (tx,vs) -> 
@@ -540,7 +539,7 @@ module FabricStore =
     let close store =
         async {
             match store with
-            | OutsideOpenedStore (tx, vs) ->
+            | OutsideOpenedStore (_, vs) ->
                 // Don't close a transaction opened outside of this store
                 return ClosedStore(vs)
             | OpenedStore (tx, vs) ->
