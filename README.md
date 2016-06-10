@@ -7,6 +7,8 @@ Currently, only one module exists within FSFabric: FabricStore.
 
 ### FabricStore
 
+FabricStore lifts operating on IReliableDictionarys into the AsyncSeq space. Evaluations are lazy evaluated, and when possible, use native calls (eg. `AddOrUpdateAsync()`). However, the majority of applications require enumerating the dictionary, so caution is advised.
+
 FabricStore is very simple to use:
 
 **Querying a Fabric Store, then updating it**
@@ -16,6 +18,8 @@ We will:
 * Update each of these items
 * Commit these to the store
 * Return the first such updated item
+
+Note that after an "update" is called, the operations that occur become `FabricStore -> Async<FabricStore>`, and require bind (`>>=`) instead of piping.
 
 ```f#
 FabricStore.initDict stateManager "MyDictionaryName"
