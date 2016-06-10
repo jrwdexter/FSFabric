@@ -1,0 +1,25 @@
+type project
+title
+    FSFabric
+owners
+    Jonathan Dexter
+authors 
+    Jonathan Dexter
+projectUrl
+    http://github.com/mandest/FSFabric
+iconUrl
+    https://raw.githubusercontent.com/mandest/FSFabric/master/docs/files/img/logo.png
+licenseUrl
+    http://github.com/mandest/FSFabric/blob/master/LICENSE.txt
+requireLicenseAcceptance
+    false
+copyright
+    Copyright 2015
+tags
+    ServiceFabric Service Fabric FSharp F# Azure
+summary
+    A set of modules and functions for working with Service Fabric in F#.
+description
+    A collection of modules and funcitons to make working with Service Fabric intuitive in F#. Includes FabricStore, which greatly simplifies IReliableDictionary operations.
+
+
