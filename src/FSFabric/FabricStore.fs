@@ -6,20 +6,20 @@ open Microsoft.ServiceFabric.Data
 open Microsoft.ServiceFabric.Data.Collections
 open FSharp.Control
 
-type StoreValues<'T> =
+type StoreValues<'TKey,'T when 'TKey :> IComparable<'TKey> and 'TKey :> IEquatable<'TKey>> =
     | Empty
-    | Dictionary of IReliableDictionary<Guid, 'T>
-    | Values of AsyncSeq<Guid * 'T>
+    | Dictionary of IReliableDictionary<'TKey, 'T>
+    | Values of AsyncSeq<'TKey * 'T>
 
-type ValueStore<'T> =
+type ValueStore<'TKey, 'T when 'TKey :> IComparable<'TKey> and 'TKey :> IEquatable<'TKey>> =
     | EmptyStore of IReliableStateManager
-    | DictionaryStore of IReliableStateManager * IReliableDictionary<Guid, 'T>
-    | ResultStore of IReliableStateManager * AsyncSeq<Guid * 'T>
+    | DictionaryStore of IReliableStateManager * IReliableDictionary<'TKey, 'T>
+    | ResultStore of IReliableStateManager * AsyncSeq<'TKey * 'T>
 
-type FabricStore<'T> =
-    | ClosedStore of ValueStore<'T>
-    | OpenedStore of ITransaction * ValueStore<'T>
-    | OutsideOpenedStore of ITransaction * ValueStore<'T> // A store with a transaction that was provided out of scope
+type FabricStore<'TKey, 'T when 'TKey :> IComparable<'TKey> and 'TKey :> IEquatable<'TKey>> =
+    | ClosedStore of ValueStore<'TKey, 'T>
+    | OpenedStore of ITransaction * ValueStore<'TKey, 'T>
+    | OutsideOpenedStore of ITransaction * ValueStore<'TKey, 'T> // A store with a transaction that was provided out of scope
 
 module FabricStore =
     // Lifting value store
@@ -53,7 +53,7 @@ module FabricStore =
         | OutsideOpenedStore (_, vs) -> f vs
 
     // Initialization
-    let init<'a> stateManager : FabricStore<'a>= EmptyStore stateManager |> ClosedStore
+    let init<'a, 'b when 'a :> IComparable<'a> and 'a :> IEquatable<'a>> stateManager : FabricStore<'a, 'b>= EmptyStore stateManager |> ClosedStore
 
     let getDictionary (dictionaryName:string) store =
         store
@@ -70,7 +70,7 @@ module FabricStore =
             } |> Async.RunSynchronously
         )
 
-    let initDict<'a> stateManager dictionaryName : FabricStore<'a> = 
+    let initDict<'a, 'b when 'a :> IComparable<'a> and 'a :> IEquatable<'a>> stateManager dictionaryName : FabricStore<'a, 'b> = 
         stateManager
         |> init
         |> getDictionary dictionaryName
