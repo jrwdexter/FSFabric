@@ -2,12 +2,14 @@
 <package>
   <metadata>
     <id>FSFabric</id>
-    <version>0.0.1</version>
+    <version>0.0.3</version>
+    <title>FSFabric</title>
     <authors>mandest</authors>
     <owners>mandest</owners>
     <licenseUrl>https://github.com/mandest/FSFabric/blob/master/LICENSE</licenseUrl>
     <projectUrl>https://github.com/mandest/FSFabric</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <summary>A collection of utilities for working with Service Fabric in F#.</summary>
     <description>A collection of utilities for working with Service Fabric in F#.</description>
     <copyright>Copyright 2016</copyright>
     <tags>ServiceFabric Service Fabric FSharp F# Azure</tags>

@@ -1,18 +1,10 @@
-namespace Nerdery.Common.Fabric
+namespace FSFabric
 
 open System
-open System.Collections.Generic
 open System.Threading
-open System.Threading.Tasks
-open System.Fabric
-open Microsoft.ServiceFabric.Services.Runtime
 open Microsoft.ServiceFabric.Data
-open Microsoft.ServiceFabric.Services.Communication.Runtime
-open Microsoft.ServiceFabric.Services.Remoting.Runtime
 open Microsoft.ServiceFabric.Data.Collections
-open Microsoft.ServiceFabric.Services.Remoting
 open FSharp.Control
-open FSharp.Control.AsyncSeqExtensions
 
 type StoreValues<'T> =
     | Empty
@@ -100,13 +92,13 @@ module FabricStore =
         | OpenedStore (openTx, vs) ->
             openTx.Dispose()
             OutsideOpenedStore(tx, vs)
-        | OutsideOpenedStore (openTx, vs) -> OutsideOpenedStore (tx, vs)
+        | OutsideOpenedStore (_, vs) -> OutsideOpenedStore (tx, vs)
 
     let withTx' f (tx:ITransaction) valueStore =
         match valueStore with
-        | EmptyStore sm -> f tx Empty
-        | DictionaryStore (sm, d) -> f tx (Dictionary d)
-        | ResultStore (sm, v) -> f tx (Values v)
+        | EmptyStore _ -> f tx Empty
+        | DictionaryStore (_, d) -> f tx (Dictionary d)
+        | ResultStore (_, v) -> f tx (Values v)
 
     let withTxClosing f store =
         let sm = stateManager store
@@ -143,9 +135,9 @@ module FabricStore =
         async {
             return!
                 match valueStore with
-                | EmptyStore sm -> f tx Empty
-                | DictionaryStore (sm, d) -> f tx (Dictionary d)
-                | ResultStore (sm, v) -> f tx (Values v)
+                | EmptyStore _ -> f tx Empty
+                | DictionaryStore (_, d) -> f tx (Dictionary d)
+                | ResultStore (_, v) -> f tx (Values v)
         }
 
     let withTxClosingAsync f store =
