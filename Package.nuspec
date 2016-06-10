@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package>
+  <metadata>
+    <id>FSFabric</id>
+    <version>0.0.1</version>
+    <authors>mandest</authors>
+    <owners>mandest</owners>
+    <licenseUrl>https://github.com/mandest/FSFabric/blob/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/mandest/FSFabric</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>A collection of utilities for working with Service Fabric in F#.</description>
+    <copyright>Copyright 2016</copyright>
+    <tags>ServiceFabric Service Fabric FSharp F# Azure</tags>
+    <dependencies>
+      <dependency id="Microsoft.ServiceFabric.Services" version="2.0.217" />
+      <dependency id="FSharp.Control.AsyncSeq" version="2.0.8" />
+    </dependencies>
+  </metadata>
+</package>
