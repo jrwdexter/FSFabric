@@ -509,8 +509,8 @@ module FabricStore =
                 match storeValues with
                 | Empty -> return AsyncSeq.empty
                 | Dictionary _ -> return AsyncSeq.empty // Don't create a dictionary version, that would just duplicate items
-                | Values values ->
-                    let! (dictionary:IReliableDictionary<_,_>) = sm.GetOrAddAsync(dictionaryName) |> Async.AwaitTask
+                | Values (values:AsyncSeq<'TKey * 'TValue>) ->
+                    let! (dictionary:IReliableDictionary<'TKey,'TValue>) = sm.GetOrAddAsync(dictionaryName) |> Async.AwaitTask
                     do!
                         values
                         |> AsyncSeq.iterAsync (fun v ->
@@ -519,7 +519,7 @@ module FabricStore =
                                 result |> ignore
                             }
                         )
-                    return AsyncSeq.empty
+                    return values
             }
         )
 
