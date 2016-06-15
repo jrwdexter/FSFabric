@@ -1,3 +1,7 @@
+#### 0.0.7-beta - June 15th, 2016
+* Updated delete to pull the proper dictionary.
+* Delete now returns result values, allowing for `delete -> map -> create` type code.
+
 #### 0.0.6-beta - June 10th, 2016
 * Removed final Guid references from file to ensure that all operations can be done with non-Guid keys.
 
