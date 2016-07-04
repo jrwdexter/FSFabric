@@ -1,3 +1,6 @@
+#### 0.0.8-beta - July 9th, 2016
+* Removed any thread blocking functionality that existed (beyond calls labeled *blocking*)
+
 #### 0.0.7-beta - June 15th, 2016
 * Updated delete to pull the proper dictionary.
 * Delete now returns result values, allowing for `delete -> map -> create` type code.

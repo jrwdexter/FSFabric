@@ -19,13 +19,17 @@ We will:
 * Commit these to the store
 * Return the first such updated item
 
-Note that after an "update" is called, the operations that occur become `FabricStore -> Async<FabricStore>`, and require bind (`>>=`) instead of piping.
+Note: 
+
+* `>>=` corresponds to Async.bind
+
+This operator is included under FSFabric.Async.Operators, if they have not been added to your code already.
 
 ```f#
-FabricStore.initDict stateManager "MyDictionaryName"
-|> FabricStore.filter (fun (k,v) -> k.StartsWith("x"))
-|> FabricStore.map (fun (k, v) -> k, { v with Age = v.Age + 1 })
-|> FabricStore.update dictName
+FabricStore.initDict<string, Person> stateManager "MyDictionaryName"
+>>= FabricStore.filter (fun (k, _) -> k.StartsWith("x"))
+>>= FabricStore.map (fun (k, v) -> k, { v with Age = v.Age + 1 })
+>>= FabricStore.update "MyDictionaryName"
 >>= FabricStore.commit
 >>= FabricStore.tryFirst
 ```

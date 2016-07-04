@@ -2,24 +2,12 @@ namespace FSFabric
 
 open System
 open System.Threading
+
 open Microsoft.ServiceFabric.Data
 open Microsoft.ServiceFabric.Data.Collections
 open FSharp.Control
 
-type StoreValues<'TKey,'T when 'TKey :> IComparable<'TKey> and 'TKey :> IEquatable<'TKey>> =
-    | Empty
-    | Dictionary of IReliableDictionary<'TKey, 'T>
-    | Values of AsyncSeq<'TKey * 'T>
-
-type ValueStore<'TKey, 'T when 'TKey :> IComparable<'TKey> and 'TKey :> IEquatable<'TKey>> =
-    | EmptyStore of IReliableStateManager
-    | DictionaryStore of IReliableStateManager * IReliableDictionary<'TKey, 'T>
-    | ResultStore of IReliableStateManager * AsyncSeq<'TKey * 'T>
-
-type FabricStore<'TKey, 'T when 'TKey :> IComparable<'TKey> and 'TKey :> IEquatable<'TKey>> =
-    | ClosedStore of ValueStore<'TKey, 'T>
-    | OpenedStore of ITransaction * ValueStore<'TKey, 'T>
-    | OutsideOpenedStore of ITransaction * ValueStore<'TKey, 'T> // A store with a transaction that was provided out of scope
+open FSFabric.Types
 
 module FabricStore =
     // Lifting value store
@@ -57,7 +45,7 @@ module FabricStore =
 
     let getDictionary (dictionaryName:string) store =
         store
-        |> mapValueMethod (fun vs ->
+        |> mapValueMethodAsync (fun vs ->
             async {
                 match vs with
                 | EmptyStore sm -> 
@@ -67,10 +55,10 @@ module FabricStore =
                     let! dict = sm.GetOrAddAsync dictionaryName |> Async.AwaitTask
                     return DictionaryStore (sm,dict)
                 | ds -> return ds
-            } |> Async.RunSynchronously
+            }
         )
 
-    let initDict<'a, 'b when 'a :> IComparable<'a> and 'a :> IEquatable<'a>> stateManager dictionaryName : FabricStore<'a, 'b> = 
+    let initDict<'a, 'b when 'a :> IComparable<'a> and 'a :> IEquatable<'a>> stateManager dictionaryName : Async<FabricStore<'a, 'b>> = 
         stateManager
         |> init
         |> getDictionary dictionaryName
@@ -131,7 +119,7 @@ module FabricStore =
             let resultStore = ResultStore(sm, result)
             OutsideOpenedStore (tx, resultStore)
 
-    let withTxAsync' f (tx:ITransaction) valueStore =
+    let withTxAsync' f tx valueStore =
         async {
             return!
                 match valueStore with
@@ -176,30 +164,20 @@ module FabricStore =
         }
 
     // Enumeration
-    let enumerate tx (d:IReliableDictionary<'TKey,'T>) = 
-//        let result = 
-//            seq {
-//                let ct = new CancellationToken()
-//                let enumerable = d.CreateEnumerableAsync(tx) |> Async.AwaitTask |> Async.RunSynchronously
-//                let enumerator = enumerable.GetAsyncEnumerator()
-//                let mutable hasNext = true
-//                while (hasNext) do
-//                    let next = enumerator.MoveNextAsync(ct) |> Async.AwaitTask |> Async.RunSynchronously
-//                    hasNext <- next
-//                    yield enumerator.Current.Key,enumerator.Current.Value
-//            }
-//            |> Seq.toList
-//        result |> AsyncSeq.ofSeq
-        seq {
-            let ct = new CancellationToken()
-            let enumerable = d.CreateEnumerableAsync(tx) |> Async.AwaitTask |> Async.RunSynchronously
+    let enumerateWithCancellation cancellationToken tx (d:IReliableDictionary<'TKey,'T>) = 
+        asyncSeq {
+            let! enumerable = d.CreateEnumerableAsync(tx) |> Async.AwaitTask
             let enumerator = enumerable.GetAsyncEnumerator()
-            let mutable hasNext = enumerator.MoveNextAsync(ct) |> Async.AwaitTask |> Async.RunSynchronously
+            let mutable hasNext = true
+            let! nextValue = enumerator.MoveNextAsync(cancellationToken) |> Async.AwaitTask
+            hasNext <- nextValue
             while (hasNext) do
                 yield enumerator.Current.Key,enumerator.Current.Value
-                let next = enumerator.MoveNextAsync(ct) |> Async.AwaitTask |> Async.RunSynchronously
+                let! next = enumerator.MoveNextAsync(cancellationToken) |> Async.AwaitTask
                 hasNext <- next
-        } |> Seq.toList |> AsyncSeq.ofSeq
+        }
+
+    let enumerate tx d = enumerateWithCancellation (new CancellationToken()) tx d
 
     let all store =
         store
@@ -211,7 +189,7 @@ module FabricStore =
         )
 
     // Result
-    let values store =
+    let getValues store =
         store
         |> withTx (fun tx sv ->
             match sv with
@@ -227,6 +205,12 @@ module FabricStore =
             | ResultStore (_,v) -> v
         )
 
+    let getValuesAsync asyncStore =
+        asyncSeq {
+            let! store = asyncStore
+            return getValues store
+        }
+
     // Applicative functor ('map')
     let result sm v = ResultStore (sm, v) |> ClosedStore
 
@@ -237,34 +221,29 @@ module FabricStore =
         | Some sequence -> result sm (sequence |> AsyncSeq.ofSeq)
 
     let map f store =
-        store
-        |> withTx (fun tx sv ->
-            match sv with
-            | Empty -> AsyncSeq.empty
-            | Dictionary d ->
-                AsyncSeq.map f <| enumerate tx d
-            | Values v ->
-                AsyncSeq.map f v
-        )
+        async {
+            return
+                store
+                |> withTx (fun tx sv ->
+                    match sv with
+                    | Empty -> AsyncSeq.empty
+                    | Dictionary d ->
+                        AsyncSeq.map f <| enumerate tx d
+                    | Values v ->
+                        AsyncSeq.map f v
+                )
+        }
 
     // Map all AsyncSeq functions into FabricStore land
     let private mapAsyncSeq f =
-        withTx (fun tx storeValues ->
+        withTxAsync (fun tx storeValues ->
             match storeValues with
             | Values sequence ->
-//                let first = sequence |> AsyncSeq.map fst
-//                let second = sequence |> AsyncSeq.map snd
-//                let secondMapped = f second
-//                AsyncSeq.zip first secondMapped
-                sequence |> f
-            | Empty -> AsyncSeq.empty
+                async { return sequence |> f }
+            | Empty -> async { return AsyncSeq.empty }
             | Dictionary d -> 
                 let sequence = enumerate tx d
-//                let first = sequence |> AsyncSeq.map fst
-//                let second = sequence |> AsyncSeq.map snd
-//                let secondMapped = f second
-//                AsyncSeq.zip first secondMapped
-                sequence |> f
+                async { return sequence |> f }
         )
 
     let private doAsyncSeq defaultValue f =
@@ -317,7 +296,11 @@ module FabricStore =
     let distinctUntilChangedWithAsync mapping store = store |> (mapAsyncSeq <| AsyncSeq.distinctUntilChangedWithAsync mapping)
     let exists predicate store = store |> (doAsyncSeqAsync false <| AsyncSeq.exists predicate)
     let filter predicate store = store |> (mapAsyncSeq <| AsyncSeq.filter predicate)
-    let filterAsSeq predicate store = store |> (mapAsyncSeq <| AsyncSeq.filter predicate) |> values |> AsyncSeq.toBlockingSeq
+    let filterAsSeq predicate store =
+        asyncSeq {
+            let! resultingValues = store |> (mapAsyncSeq <| AsyncSeq.filter predicate)
+            yield! resultingValues |> getValues
+        } |> AsyncSeq.toBlockingSeq
     let filterAsync predicate store = store |> (mapAsyncSeq <| AsyncSeq.filterAsync predicate)
     let firstOrDefault ``default`` = doAsyncSeqAsync ``default`` <| AsyncSeq.firstOrDefault ``default``
     let fold folder state store = store |> (doAsyncSeqAsync state <| AsyncSeq.fold folder state)
@@ -337,7 +320,11 @@ module FabricStore =
             | Dictionary d -> d.GetCountAsync(tx) |> Async.AwaitTask
             | Values v -> v |> AsyncSeq.length
         )
-    let mapAsSeq mapping store = store |> map mapping |> values |> AsyncSeq.toBlockingSeq
+    let mapAsSeq mapping store =
+        asyncSeq {
+            let! resultingStore = store |> map mapping
+            yield! resultingStore |> getValues
+        } |> AsyncSeq.toBlockingSeq
     let mapAsync mapping store = store |> (mapAsyncSeq <| AsyncSeq.mapAsync mapping)
     let mapiAsync mapping store = store |> (mapAsyncSeq <| AsyncSeq.mapiAsync mapping)
     let merge store = store |> (lift2AsyncSeq <| AsyncSeq.merge)
