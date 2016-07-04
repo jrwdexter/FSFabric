@@ -82,6 +82,8 @@
   -->
   <Import Project="..\..\.paket\paket.targets" />
   <ItemGroup>
+    <Compile Include="Types.fs" />
+    <Compile Include="Operators.fs" />
     <Compile Include="FabricStore.fs" />
     <None Include="paket.references" />
     <None Include="paket.template" />
