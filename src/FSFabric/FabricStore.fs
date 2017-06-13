@@ -420,29 +420,36 @@ module FabricStore =
 
     // Staging 
     let stageOne key item store =
-        store
-        |> mapValueMethod (fun vs ->
-            match vs with
-            | EmptyStore sm ->
-                ResultStore(sm, AsyncSeq.singleton (key,item))
-            | DictionaryStore (sm,_) ->
-                ResultStore(sm, AsyncSeq.singleton (key,item))
-            | ResultStore (sm,v) ->
-                let sequence = (AsyncSeq.singleton (key,item)) |> AsyncSeq.append v
-                ResultStore(sm, sequence)
-        )
+        async {
+            return
+                store
+                |> mapValueMethod (fun vs ->
+                    match vs with
+                    | EmptyStore sm ->
+                        ResultStore(sm, AsyncSeq.singleton (key,item))
+                    | DictionaryStore (sm,_) ->
+                        ResultStore(sm, AsyncSeq.singleton (key,item))
+                    | ResultStore (sm,v) ->
+                        let sequence = (AsyncSeq.singleton (key,item)) |> AsyncSeq.append v
+                        ResultStore(sm, sequence)
+                )
+        }
+
     let stageMany values store = 
-        store
-        |> mapValueMethod (fun vs ->
-            match vs with
-            | EmptyStore sm ->
-                ResultStore(sm, values)
-            | DictionaryStore (sm,_) ->
-                ResultStore(sm, values)
-            | ResultStore (sm,v) ->
-                let sequence = AsyncSeq.append v values
-                ResultStore(sm, sequence)
-        )
+        async {
+            return
+                store
+                |> mapValueMethod (fun vs ->
+                    match vs with
+                    | EmptyStore sm ->
+                        ResultStore(sm, values)
+                    | DictionaryStore (sm,_) ->
+                        ResultStore(sm, values)
+                    | ResultStore (sm,v) ->
+                        let sequence = AsyncSeq.append v values
+                        ResultStore(sm, sequence)
+                )
+        }
 
     // Crud operations
     let create (dictionaryName:string) store =

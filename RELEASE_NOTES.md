@@ -1,3 +1,6 @@
+#### 0.0.9-beta - July 9th, 2016
+Updated staging to return async, to match other calls.
+
 #### 0.0.8-beta - July 9th, 2016
 * Removed any thread blocking functionality that existed (beyond calls labeled *blocking*)
 
